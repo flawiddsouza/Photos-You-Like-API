@@ -111,7 +111,7 @@ function prependDateTimeToString(string) {
     return moment().format('Y-MM-D_HH-mm-ss.SSS_') + string
 }
 
-const url = require("url")
+const url = require('url')
 
 function getFileNameFromURL(theURL) {
     var parsed = url.parse(theURL)
@@ -473,6 +473,75 @@ app.get('/tag/:tag', (req, res) => {
             res.json({ success: true, photos: photos })
         })
     })
+})
+
+const scrapers = require('./scrapers')
+
+app.post('/add-from', async(req, res) => {
+    var photo = {}
+
+    if(req.body.instagram) {
+        photo = await scrapers.instagram(req.body.instagram)
+    }
+
+    if(req.body.tumblr) {
+        photo = await scrapers.tumblr(req.body.tumblr)
+    }
+
+    if(req.body.flickr) {
+        photo = await scrapers.flickr(req.body.flickr)
+    }
+
+    if(photo.error) {
+        res.json({
+            success: false,
+            error: error.message
+        })
+    }
+
+    try {
+        var existingPhotographer = await knex('photographers').where('links', 'like', `%${photo.photographerLink}%`).select('id')
+        var photographerId = null
+        if(existingPhotographer[0]) {
+            photographerId = existingPhotographer[0].id
+        } else {
+            var insertedIds = await knex('photographers').insert({
+                name: photo.photographerName,
+                links: JSON.stringify([ photo.photographerLink ]),
+                addedByUserId: req.authUserId
+            })
+            photographerId = insertedIds[0]
+        }
+
+
+        var images = []
+        for(let image of photo.images) {
+            let filename = getFileNameFromURL(image)
+            filename = prependDateTimeToString(filename)
+            await downloadImage(image, path.join(uploadsDir, filename))
+            images.push(filename)
+        }
+
+        knex('photos').insert({
+            title: photo.title,
+            photographerId: photographerId,
+            images: JSON.stringify(images),
+            source: photo.source,
+            // addedByUserId: req.authUserId
+        }).then(insertedIds => {
+            res.json({
+                success: true,
+                message: 'Photo added',
+                id: insertedIds[0]
+            })
+        })
+
+    } catch(error) {
+        res.json({
+            success: false,
+            error: error.message
+        })
+    }
 })
 
 app.listen(9883)

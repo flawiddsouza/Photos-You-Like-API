@@ -28,6 +28,7 @@ exports.up = knex => {
             table.jsonb('images')
             table.string('source')
             table.jsonb('tags')
+                .defaultTo('[]')
             table.string('note')
             table.jsonb('metadata') // can include taken on, camera used, lens used etc
             table
