@@ -203,7 +203,7 @@ app.post('/photo/add', authCheck, upload.array('localImage'), async(req, res) =>
 app.get('/photo/all', (req, res) => {
     unirest.get(`${req.protocol}://${req.get('host')}/photographer/all`).end(response => {
         var photographers = response.body
-        knex('photos').select().then(photos => {
+        knex('photos').select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
                 photo.tags = JSON.parse(photo.tags)
@@ -428,7 +428,7 @@ app.get('/photographer/:id/all', (req, res) => {
         var photographer = photographers[0]
         if(photographer) {
             photographer.links = JSON.parse(photographer.links)
-            knex('photos').where('photographerId', req.params.id).select().then(photos => {
+            knex('photos').where('photographerId', req.params.id).select().orderBy('updated_at', 'desc').then(photos => {
                 photos.forEach(photo => {
                     photo.images = JSON.parse(photo.images)
                     photo.tags = JSON.parse(photo.tags)
@@ -448,7 +448,7 @@ app.get('/photographer/:id/all', (req, res) => {
 app.get('/user/photo/all', authCheck, (req, res) => {
     unirest.get(`${req.protocol}://${req.get('host')}/photographer/all`).end(response => {
         var photographers = response.body
-        knex('photos').where('addedByUserId', req.authUserId).select().then(photos => {
+        knex('photos').where('addedByUserId', req.authUserId).select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
                 photo.tags = JSON.parse(photo.tags)
@@ -464,7 +464,7 @@ app.get('/user/photo/all', authCheck, (req, res) => {
 app.get('/tag/:tag', (req, res) => {
     unirest.get(`${req.protocol}://${req.get('host')}/photographer/all`).end(response => {
         var photographers = response.body
-        knex('photos').where('tags', 'like', `%${req.params.tag}%`).select().then(photos => {
+        knex('photos').where('tags', 'like', `%${req.params.tag}%`).select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
                 photo.tags = JSON.parse(photo.tags)
@@ -479,7 +479,7 @@ app.get('/tag/:tag', (req, res) => {
 
 const scrapers = require('./scrapers')
 
-app.post('/add-from', async(req, res) => {
+app.post('/add-from', authCheck, async(req, res) => {
     var photo = {}
 
     if(req.body.instagram) {
@@ -529,7 +529,7 @@ app.post('/add-from', async(req, res) => {
             photographerId: photographerId,
             images: JSON.stringify(images),
             source: photo.source,
-            // addedByUserId: req.authUserId
+            addedByUserId: req.authUserId
         }).then(insertedIds => {
             res.json({
                 success: true,
