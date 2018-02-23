@@ -1,0 +1,4 @@
+node_modules
+knexfile.js
+*.sqlite3
+.env
