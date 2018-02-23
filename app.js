@@ -22,20 +22,22 @@ app.use(cors())
 const jwt = require('jsonwebtoken')
 
 app.post('/auth/google', (req, res) => {
-    unirest.post('https://accounts.google.com/o/oauth2/token')
-    .form({
-        code: req.body.code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: req.body.redirectUri,
-        grant_type: 'authorization_code'
-    })
-    .end(response => {
+    var data = {}
+    data.code = req.body.code
+    if(req.body.redirectUri) {
+        data.client_id = process.env.GOOGLE_CLIENT_ID,
+        data.client_secret = process.env.GOOGLE_CLIENT_SECRET,
+        data.redirect_uri = req.body.redirectUri
+    } else {
+        data.client_id = process.env.GOOGLE_CLIENT_ID_OTHER
+        data.client_secret = process.env.GOOGLE_CLIENT_SECRET_OTHER
+        data.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+    }
+    data.grant_type = 'authorization_code'
+    unirest.post('https://accounts.google.com/o/oauth2/token').form(data).end(response => {
         var idToken = response.body.id_token
         var accessToken = response.body.access_token
-        unirest.post('https://www.googleapis.com/oauth2/v3/tokeninfo')
-        .form({ id_token: idToken })
-        .end(response2 => {
+        unirest.post('https://www.googleapis.com/oauth2/v3/tokeninfo').form({ id_token: idToken }).end(response2 => {
             var googleUserId = response2.body.sub
             knex('users').where('googleUserId', googleUserId).select().limit(1)
             .then(rows => {
