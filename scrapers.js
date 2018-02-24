@@ -66,7 +66,7 @@ async function flickr(url) {
     photo['title'] = document.querySelector('.photo-title').textContent.trim()
     var photographer = document.querySelector('.owner-name')
     photo['photographerName'] = photographer.textContent
-    photo['photographerLink'] = photographer.getAttribute('href')
+    photo['photographerLink'] = 'https://www.flickr.com' + photographer.href
     photo['source'] = url
     var foundSizes = JSON.parse(htmlString.match(/"sizes":{.+?}}/i)[0].replace('"sizes":', ''))
     var largestSize = foundSizes[Object.keys(foundSizes)[Object.keys(foundSizes).length - 1]]

@@ -380,6 +380,35 @@ app.post('/photographer/add', authCheck, (req, res) => {
     }
 })
 
+app.patch('/photographer/:id', authCheck, (req, res) => {
+    try {
+        var insertObj = {}
+
+        if(req.body.name) {
+            insertObj.name = req.body.name
+        }
+
+        if(req.body.links) {
+            insertObj.links = req.body.links
+        }
+
+        knex('photographers').where('id', req.params.id).update(insertObj).update('updated_at', knex.fn.now()).then(updatedRowsCount => {
+            knex('photographers').where('id', req.params.id).select('updated_at').then(photographers => {
+                var photographer = photographers[0]
+                res.json({
+                    success: true,
+                    updatedAt: photographer.updated_at
+                })
+            })
+        })
+    } catch(error) {
+        res.json({
+            success: false,
+            error: error.message
+        })
+    }
+})
+
 app.delete('/photographer/:id', authCheck, async(req, res) => {
     try {
         var photosForPhotographer = await knex('photos').where('photographerId', req.params.id).select('id', 'images')
