@@ -3,13 +3,7 @@ const jsdom = require('jsdom')
 const { JSDOM } = jsdom
 
 async function instagram(url) {
-    try {
-        var htmlString = await requestPromise(url)
-    } catch(error) {
-        return { error: error.message }
-    }
-
-    const { document } = (new JSDOM(htmlString)).window
+    var document = await getDOM(url)
 
     var photo = {}
 
@@ -21,63 +15,88 @@ async function instagram(url) {
     photo['title'] = photo['title'].replace(/(\S*#(?:\[[^\]]+\]|\S+))/g, '').trim() // strip all hash tags
     var uploader = uploaderInfo['owner']
     photo['photographerName'] = uploader['full_name']
-    photo['photographerLink'] = 'http://www.instagram.com/' + uploader['username'] + '/'
+    photo['photographerLink'] = 'https://www.instagram.com/' + uploader['username'] + '/'
     photo['source'] = url
     photo['images'] = []
     photo['images'].push(document.querySelector('meta[property="og:image"]').getAttribute('content'))
 
-    return photo
+    return Promise.resolve(photo)
 }
 
 async function tumblr(url) {
-    try {
-        var htmlString = await requestPromise(url)
-    } catch(error) {
-        return { error: error.message }
-    }
-
-    const { document } = (new JSDOM(htmlString)).window
+    var document = await getDOM(url)
 
     var photo = {}
 
     photo['title'] = document.querySelector('meta[property="og:title"]').getAttribute('content')
     photo['photographerName'] = document.querySelector('figcaption').textContent
-    photo['photographerLink'] = url.match(/https:\/\/.*\.tumblr\.com/)[0]
+    photo['photographerLink'] = url.match(/http.*:\/\/.*\.tumblr\.com/)[0]
     photo['source'] = url
     photo['images'] = []
     photo['images'].push(document.querySelector('meta[property="og:image"]').getAttribute('content'))
 
-    return photo
+    return Promise.resolve(photo)
 }
 
 async function flickr(url) {
-    try {
-        var htmlString = await requestPromise(url)
-    } catch(error) {
-        return { error: error.message }
-    }
-
-    const virtualConsole = new jsdom.VirtualConsole()
-    const { document } = (new JSDOM(htmlString, { virtualConsole })).window
-    virtualConsole.on("error", () => {}) // swallow jsdom parsing errors
+    var { document, htmlString } = await getDOM(url, true, true)
 
     var photo = {}
 
     photo['title'] = document.querySelector('.photo-title').textContent.trim()
     var photographer = document.querySelector('.owner-name')
     photo['photographerName'] = photographer.textContent
-    photo['photographerLink'] = 'https://www.flickr.com' + photographer.href
+    photo['photographerLink'] = photographer.href
     photo['source'] = url
     var foundSizes = JSON.parse(htmlString.match(/"sizes":{.+?}}/i)[0].replace('"sizes":', ''))
     var largestSize = foundSizes[Object.keys(foundSizes)[Object.keys(foundSizes).length - 1]]
     photo['images'] = []
     photo['images'].push('https:' + largestSize.displayUrl)
 
-    return photo
+    return Promise.resolve(photo)
+}
+
+async function twitter(url) {
+    var document = await getDOM(url, true)
+
+    var photo = {}
+
+    photo['title'] = document.querySelector('.js-tweet-text-container').textContent.trim()
+    photo['title'] = photo['title'].replace(document.querySelector('.twitter-timeline-link.u-hidden').textContent, '')
+    photo['photographerName'] = document.querySelector('.show-popup-with-id').textContent.trim()
+    photo['photographerLink'] = document.querySelector('.js-action-profile').href
+    photo['source'] = url
+    photo['images'] = []
+    Array.from(document.querySelectorAll('meta[property="og:image"]')).forEach(image => {
+        photo['images'].push(image.getAttribute('content'))
+    })
+
+    return Promise.resolve(photo)
+}
+
+
+async function getDOM(url, swallowConsoleErrors = false, returnHtmlString = false) {
+    try {
+        var htmlString = await requestPromise(url)
+    } catch(error) {
+        return { error: error.message }
+    }
+
+    if(swallowConsoleErrors) {
+        const virtualConsole = new jsdom.VirtualConsole()
+        var { document } = (new JSDOM(htmlString, { url, virtualConsole })).window // url is passed so we can access stuff like document.location.origin
+        virtualConsole.on("error", () => {}) // swallow jsdom parsing errors
+    } else {
+        var { document } = (new JSDOM(htmlString, { url })).window
+    }
+
+    if(returnHtmlString) {
+        return { document, htmlString }
+    } else {
+        return document
+    }
 }
 
 module.exports = {
-    instagram: instagram,
-    tumblr: tumblr,
-    flickr: flickr
+    instagram, tumblr, flickr, twitter
 }

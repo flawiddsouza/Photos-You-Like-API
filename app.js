@@ -523,6 +523,10 @@ app.post('/add-from', authCheck, async(req, res) => {
         photo = await scrapers.flickr(req.body.flickr)
     }
 
+    if(req.body.twitter) {
+        photo = await scrapers.twitter(req.body.twitter)
+    }
+
     if(photo.error) {
         res.json({
             success: false,
