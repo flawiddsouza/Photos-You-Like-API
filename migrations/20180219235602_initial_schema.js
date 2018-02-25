@@ -2,7 +2,7 @@ exports.up = knex => {
     return knex.schema
         .createTable('users', table => {
             table.increments('id').primary()
-            table.integer('googleUserId')
+            table.string('googleUserId')
             table.string('name')
             table.timestamps(true, true)
         })
@@ -29,7 +29,7 @@ exports.up = knex => {
             table.string('source')
             table.jsonb('tags')
                 .defaultTo('[]')
-            table.string('note')
+            table.text('note')
             table.jsonb('metadata') // can include taken on, camera used, lens used etc
             table
                 .integer('addedByUserId')
@@ -42,7 +42,7 @@ exports.up = knex => {
 
 exports.down = knex => {
     return knex.schema
-        .dropTableIfExists('users')
-        .dropTableIfExists('photographers')
         .dropTableIfExists('photos')
+        .dropTableIfExists('photographers')
+        .dropTableIfExists('users')
 }
