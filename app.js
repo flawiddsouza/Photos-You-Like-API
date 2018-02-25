@@ -60,7 +60,7 @@ router.post('/auth/google', (req, res) => {
                     .header({ Authorization: `Bearer ${accessToken}` })
                     .end(response3 => {
                         var displayName = response3.body.displayName
-                        knex('users').insert({ googleUserId: googleUserId, name: displayName }).then(insertedIds => {
+                        knex('users').insert({ googleUserId: googleUserId, name: displayName }, 'id').then(insertedIds => {
                             var token = jwt.sign({ id: insertedIds[0] }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY })
                             res.json({
                                 success: true,
@@ -157,7 +157,7 @@ router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res)
                 name: photographerName,
                 links: photographerLinks,
                 addedByUserId: req.authUserId
-            })
+            }, 'id')
             var photographerId = insertedIds[0]
         }
 
@@ -194,7 +194,7 @@ router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res)
             tags: tags,
             note: note,
             addedByUserId: req.authUserId
-        }).then(insertedIds => {
+        }, 'id').then(insertedIds => {
             res.json({ success: true, id: insertedIds[0] })
         })
 
@@ -371,7 +371,7 @@ router.delete('/photo/:id', authCheck, (req, res) => {
 
 router.post('/photographer/add', authCheck, (req, res) => {
     try {
-        knex('photographers').insert({ name: req.body.name, links: req.body.links }).then(insertedIds => {
+        knex('photographers').insert({ name: req.body.name, links: req.body.links }, 'id').then(insertedIds => {
             knex('photographers').where('id', insertedIds[0]).select('created_at').then(photographers => {
                 var photographer = photographers[0]
                 res.json({
@@ -492,8 +492,9 @@ router.get('/photographer/:id/all', (req, res) => {
 
 // GET all photos for authenticated user
 router.get('/user/photo/all', authCheck, (req, res) => {
+    var authUserId = req.authUserId // for some reason, if you don't call it outside the .then(() => {}) below, req.authUserId will be null
     getAllPhotographers().then(photographers => {
-        knex('photos').where('addedByUserId', req.authUserId).select().orderBy('updated_at', 'desc').then(photos => {
+        knex('photos').where('addedByUserId', authUserId).select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
                 photo.tags = JSON.parse(photo.tags)
@@ -559,7 +560,7 @@ router.post('/add-from', authCheck, async(req, res) => {
                 name: photo.photographerName,
                 links: JSON.stringify([ photo.photographerLink ]),
                 addedByUserId: req.authUserId
-            })
+            }, 'id')
             photographerId = insertedIds[0]
         }
 
@@ -578,7 +579,7 @@ router.post('/add-from', authCheck, async(req, res) => {
             images: JSON.stringify(images),
             source: photo.source,
             addedByUserId: req.authUserId
-        }).then(insertedIds => {
+        }, 'id').then(insertedIds => {
             res.json({
                 success: true,
                 message: 'Photo added',
