@@ -16,7 +16,12 @@ const unirest = require('unirest')
 
 const Knex = require('knex')
 const knexConfig = require('./knexfile')
-const knex = Knex(knexConfig.development)
+var knex
+if(process.env.NODE_ENV === 'production') {
+    knex = Knex(knexConfig.production)
+} else {
+    knex = Knex(knexConfig.development)
+}
 
 const cors = require('cors')
 app.use(cors())
