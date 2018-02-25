@@ -9,7 +9,7 @@ exports.up = knex => {
         .createTable('photographers', table => {
             table.increments('id').primary()
             table.string('name')
-            table.jsonb('links')
+            table.text('links')
             table
                 .integer('addedByUserId')
                 .unsigned()
@@ -25,12 +25,12 @@ exports.up = knex => {
                 .unsigned()
                 .references('id')
                 .inTable('photographers')
-            table.jsonb('images')
+            table.text('images')
             table.string('source')
-            table.jsonb('tags')
+            table.text('tags')
                 .defaultTo('[]')
             table.text('note')
-            table.jsonb('metadata') // can include taken on, camera used, lens used etc
+            table.text('metadata') // can include taken on, camera used, lens used etc
             table
                 .integer('addedByUserId')
                 .unsigned()
