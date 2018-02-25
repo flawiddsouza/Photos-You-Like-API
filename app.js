@@ -5,7 +5,9 @@ require('dotenv').config({ path: path.join(__dirname, '.env') })
 const express = require('express')
 const app = express()
 
-app.use(express.static(path.join(__dirname, 'public')))
+const router = express.Router()
+
+router.use(express.static(path.join(__dirname, 'public')))
 
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
@@ -21,7 +23,7 @@ app.use(cors())
 
 const jwt = require('jsonwebtoken')
 
-app.post('/auth/google', (req, res) => {
+router.post('/auth/google', (req, res) => {
     var data = {}
     data.code = req.body.code
     if(req.body.redirectUri) {
@@ -134,7 +136,7 @@ const uploadsDir = path.join(__dirname, 'public', 'images')
 const uploadDirTemp = path.join(uploadsDir, 'temp')
 const upload = multer({ dest: uploadDirTemp })
 
-app.post('/photo/add', authCheck, upload.array('localImage'), async(req, res) => {
+router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res) => {
     try {
 
         var files = req.files
@@ -200,9 +202,8 @@ app.post('/photo/add', authCheck, upload.array('localImage'), async(req, res) =>
     }
 })
 
-app.get('/photo/all', (req, res) => {
-    unirest.get(`${req.protocol}://${req.get('host')}/photographer/all`).end(response => {
-        var photographers = response.body
+router.get('/photo/all', (req, res) => {
+    getAllPhotographers().then(photographers => {
         knex('photos').select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
@@ -216,17 +217,26 @@ app.get('/photo/all', (req, res) => {
     })
 })
 
-app.get('/photo/:id', (req, res) => {
-    knex('photos').where('id', req.params.id).select().then(async(photos) => {
-        var photo = photos[0]
+async function getPhotoForId(id) {
+    var photos = await knex('photos').where('id', id).select()
+    var photo = photos[0]
+    if(photo) {
+        photo.images = JSON.parse(photo.images)
+        photo.tags = JSON.parse(photo.tags)
+        photo.metadata = JSON.parse(photo.metadata)
+        var photographers = await knex('photographers').where('id', photo.photographerId).select()
+        photo.photographer = photographers[0]
+        photo.photographer.links = JSON.parse(photo.photographer.links)
+        delete photo.photographerId
+        return Promise.resolve(photo)
+    } else {
+        return Promise.resolve(null)
+    }
+}
+
+router.get('/photo/:id', (req, res) => {
+    getPhotoForId(req.params.id).then(async(photo) => {
         if(photo) {
-            photo.images = JSON.parse(photo.images)
-            photo.tags = JSON.parse(photo.tags)
-            photo.metadata = JSON.parse(photo.metadata)
-            var photographers = await knex('photographers').where('id', photo.photographerId).select()
-            photo.photographer = photographers[0]
-            photo.photographer.links = JSON.parse(photo.photographer.links)
-            delete photo.photographerId
             res.json({ success: true, photo: photo })
         } else {
             res.json({ success: false })
@@ -234,7 +244,7 @@ app.get('/photo/:id', (req, res) => {
     })
 })
 
-app.patch('/photo/:id', authCheck, upload.array('localImage'), async(req, res) => {
+router.patch('/photo/:id', authCheck, upload.array('localImage'), async(req, res) => {
     try {
 
         var files = req.files
@@ -320,7 +330,7 @@ app.patch('/photo/:id', authCheck, upload.array('localImage'), async(req, res) =
     }
 })
 
-app.patch('/photo/:id/image/delete', authCheck, (req, res) => {
+router.patch('/photo/:id/image/delete', authCheck, (req, res) => {
     knex('photos').where('id', req.params.id).select().then(photos => {
         var images = JSON.parse(photos[0].images)
         if(images.find(image => image == req.body.image)) {
@@ -337,10 +347,9 @@ app.patch('/photo/:id/image/delete', authCheck, (req, res) => {
     })
 })
 
-app.delete('/photo/:id', authCheck, (req, res) => {
-    unirest.get(`${req.protocol}://${req.get('host')}/photo/${req.params.id}`).end(response => {
-        if(response.body.success) {
-            var photo = response.body.photo
+router.delete('/photo/:id', authCheck, (req, res) => {
+    getPhotoForId(req.params.id).then(photo => {
+        if(photo) {
             photo.images.forEach(image => { // delete all attached images from storage
                 try {
                     fs.unlinkSync(path.join(uploadsDir, image))
@@ -355,7 +364,7 @@ app.delete('/photo/:id', authCheck, (req, res) => {
     })
 })
 
-app.post('/photographer/add', authCheck, (req, res) => {
+router.post('/photographer/add', authCheck, (req, res) => {
     try {
         knex('photographers').insert({ name: req.body.name, links: req.body.links }).then(insertedIds => {
             knex('photographers').where('id', insertedIds[0]).select('created_at').then(photographers => {
@@ -380,7 +389,7 @@ app.post('/photographer/add', authCheck, (req, res) => {
     }
 })
 
-app.patch('/photographer/:id', authCheck, (req, res) => {
+router.patch('/photographer/:id', authCheck, (req, res) => {
     try {
         var insertObj = {}
 
@@ -409,7 +418,7 @@ app.patch('/photographer/:id', authCheck, (req, res) => {
     }
 })
 
-app.delete('/photographer/:id', authCheck, async(req, res) => {
+router.delete('/photographer/:id', authCheck, async(req, res) => {
     try {
         var photosForPhotographer = await knex('photos').where('photographerId', req.params.id).select('id', 'images')
         var photoIdsToBeDeleted = []
@@ -434,14 +443,17 @@ app.delete('/photographer/:id', authCheck, async(req, res) => {
     }
 })
 
-app.get('/photographer/all', (req, res) => {
-    knex('photographers').select().then(photographers => {
-        photographers.forEach(photographer => photographer.links = JSON.parse(photographer.links))
-        res.json(photographers)
-    })
+async function getAllPhotographers() {
+    var photographers = await knex('photographers').select()
+    photographers.forEach(photographer => photographer.links = JSON.parse(photographer.links))
+    return Promise.resolve(photographers)
+}
+
+router.get('/photographer/all', (req, res) => {
+    getAllPhotographers().then(photographers => res.json(photographers))
 })
 
-app.get('/photographer/all/with/count', async(req, res) => {
+router.get('/photographer/all/with/count', async(req, res) => {
     var photos = await knex('photos').select('photographerId')
     knex('photographers').select().then(photographers => {
         photographers.forEach(photographer => {
@@ -452,7 +464,7 @@ app.get('/photographer/all/with/count', async(req, res) => {
     })
 })
 
-app.get('/photographer/:id/all', (req, res) => {
+router.get('/photographer/:id/all', (req, res) => {
     knex('photographers').where('id', req.params.id).select().then(photographers => {
         var photographer = photographers[0]
         if(photographer) {
@@ -474,9 +486,8 @@ app.get('/photographer/:id/all', (req, res) => {
 })
 
 // GET all photos for authenticated user
-app.get('/user/photo/all', authCheck, (req, res) => {
-    unirest.get(`${req.protocol}://${req.get('host')}/photographer/all`).end(response => {
-        var photographers = response.body
+router.get('/user/photo/all', authCheck, (req, res) => {
+    getAllPhotographers().then(photographers => {
         knex('photos').where('addedByUserId', req.authUserId).select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
@@ -490,9 +501,8 @@ app.get('/user/photo/all', authCheck, (req, res) => {
     })
 })
 
-app.get('/tag/:tag', (req, res) => {
-    unirest.get(`${req.protocol}://${req.get('host')}/photographer/all`).end(response => {
-        var photographers = response.body
+router.get('/tag/:tag', (req, res) => {
+    getAllPhotographers().then(photographers => {
         knex('photos').where('tags', 'like', `%${req.params.tag}%`).select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
@@ -508,7 +518,7 @@ app.get('/tag/:tag', (req, res) => {
 
 const scrapers = require('./scrapers')
 
-app.post('/add-from', authCheck, async(req, res) => {
+router.post('/add-from', authCheck, async(req, res) => {
     var photo = {}
 
     if(req.body.instagram) {
@@ -578,5 +588,7 @@ app.post('/add-from', authCheck, async(req, res) => {
         })
     }
 })
+
+app.use(process.env.BASE_URL, router)
 
 app.listen(9883)
