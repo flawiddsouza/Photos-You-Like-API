@@ -146,6 +146,13 @@ const thumbnailsDir = path.join(uploadsDir, 'thumbnails')
 const thumbnailWidth = 315
 const thumbnailJPGQuality = 95 // perfect balance between size and quality
 
+function generateThumbnail(imagePath, thumbnailSavePath) {
+    fs.readFile(imagePath, (err, image) => {
+        if (err) console.log(err)
+        sharp(image).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
+    })
+}
+
 router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res) => {
     try {
 
@@ -176,7 +183,7 @@ router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res)
                     let imageSavePath = path.join(uploadsDir, filename)
                     fs.renameSync(file.path, imageSavePath)
                     let thumbnailSavePath = path.join(thumbnailsDir, filename)
-                    sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
+                    generateThumbnail(imageSavePath, thumbnailSavePath)
                     imagesNew.push(filename)
                 }
             } else {
@@ -186,7 +193,7 @@ router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res)
                     let imageSavePath = path.join(uploadsDir, filename)
                     await downloadImage(image.image,imageSavePath)
                     let thumbnailSavePath = path.join(thumbnailsDir, filename)
-                    sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
+                    generateThumbnail(imageSavePath, thumbnailSavePath)
                     imagesNew.push(filename)
                 }
             }
@@ -287,7 +294,7 @@ router.patch('/photo/:id', authCheck, upload.array('localImage'), async(req, res
                             let imageSavePath = path.join(uploadsDir, filename)
                             fs.renameSync(file.path, imageSavePath)
                             let thumbnailSavePath = path.join(thumbnailsDir, filename)
-                            sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
+                            generateThumbnail(imageSavePath, thumbnailSavePath)
                             insertObj.images.push(filename)
                         }
                     } else if(image.type == 'url') {
@@ -296,7 +303,7 @@ router.patch('/photo/:id', authCheck, upload.array('localImage'), async(req, res
                         let imageSavePath = path.join(uploadsDir, filename)
                         await downloadImage(image.image, imageSavePath)
                         let thumbnailSavePath = path.join(thumbnailsDir, filename)
-                        sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
+                        generateThumbnail(imageSavePath, thumbnailSavePath)
                         insertObj.images.push(filename)
                     } else if(image.type == 'existing') {
                         insertObj.images.push(image.image)
