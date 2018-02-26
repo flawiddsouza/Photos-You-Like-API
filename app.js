@@ -493,6 +493,18 @@ router.get('/photographer/all/with/count', async(req, res) => {
     })
 })
 
+router.get('/photographer/all/with/count/user', authCheck, async(req, res) => {
+    var photos = await knex('photos').where('addedByUserId', req.authUserId).select('photographerId')
+    knex('photographers').select().then(photographers => {
+        photographers.forEach(photographer => {
+            photographer.links = JSON.parse(photographer.links)
+            photographer.count = photos.filter(photo => photo.photographerId == photographer.id).length
+        })
+        photographers = photographers.filter(photographer => photographer.count > 0)
+        res.json(photographers)
+    })
+})
+
 router.get('/photographer/:id/all', (req, res) => {
     knex('photographers').where('id', req.params.id).select().then(photographers => {
         var photographer = photographers[0]
