@@ -20,6 +20,7 @@
         "pg": "^7.4.1",
         "request": "^2.83.0",
         "request-promise-native": "^1.0.5",
+        "sharp": "github:lovell/sharp#prebuild",
         "sqlite3": "^3.1.13",
         "unirest": "^0.5.1"
     },

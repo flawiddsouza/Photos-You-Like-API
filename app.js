@@ -141,6 +141,11 @@ const uploadsDir = path.join(__dirname, 'public', 'images')
 const uploadDirTemp = path.join(uploadsDir, 'temp')
 const upload = multer({ dest: uploadDirTemp })
 
+const sharp = require('sharp')
+const thumbnailsDir = path.join(uploadsDir, 'thumbnails')
+const thumbnailWidth = 315
+const thumbnailJPGQuality = 95 // perfect balance between size and quality
+
 router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res) => {
     try {
 
@@ -168,14 +173,20 @@ router.post('/photo/add', authCheck, upload.array('localImage'), async(req, res)
                 if(files.length > 0) {
                     let file = files.pop()
                     let filename = prependDateTimeToString(file.originalname)
-                    fs.renameSync(file.path, path.join(uploadsDir, filename))
+                    let imageSavePath = path.join(uploadsDir, filename)
+                    fs.renameSync(file.path, imageSavePath)
+                    let thumbnailSavePath = path.join(thumbnailsDir, filename)
+                    sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
                     imagesNew.push(filename)
                 }
             } else {
                 if(image.image) {
                     let filename = getFileNameFromURL(image.image)
                     filename = prependDateTimeToString(filename)
-                    await downloadImage(image.image, path.join(uploadsDir, filename))
+                    let imageSavePath = path.join(uploadsDir, filename)
+                    await downloadImage(image.image,imageSavePath)
+                    let thumbnailSavePath = path.join(thumbnailsDir, filename)
+                    sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
                     imagesNew.push(filename)
                 }
             }
@@ -273,13 +284,19 @@ router.patch('/photo/:id', authCheck, upload.array('localImage'), async(req, res
                         if(files.length > 0) {
                             let file = files.pop()
                             let filename = prependDateTimeToString(file.originalname)
-                            fs.renameSync(file.path, path.join(uploadsDir, filename))
+                            let imageSavePath = path.join(uploadsDir, filename)
+                            fs.renameSync(file.path, imageSavePath)
+                            let thumbnailSavePath = path.join(thumbnailsDir, filename)
+                            sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
                             insertObj.images.push(filename)
                         }
                     } else if(image.type == 'url') {
                         let filename = getFileNameFromURL(image.image)
                         filename = prependDateTimeToString(filename)
-                        await downloadImage(image.image, path.join(uploadsDir, filename))
+                        let imageSavePath = path.join(uploadsDir, filename)
+                        await downloadImage(image.image, imageSavePath)
+                        let thumbnailSavePath = path.join(thumbnailsDir, filename)
+                        sharp(imageSavePath).resize(thumbnailWidth).jpeg({ quality: thumbnailJPGQuality }).toFile(thumbnailSavePath)
                         insertObj.images.push(filename)
                     } else if(image.type == 'existing') {
                         insertObj.images.push(image.image)
