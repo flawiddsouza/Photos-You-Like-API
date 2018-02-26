@@ -514,8 +514,29 @@ router.get('/photographer/:id/all', (req, res) => {
     })
 })
 
+router.get('/photographer/:id/all/user', authCheck, (req, res) => {
+    knex('photographers').where('id', req.params.id).select().then(photographers => {
+        var photographer = photographers[0]
+        if(photographer) {
+            photographer.links = JSON.parse(photographer.links)
+            knex('photos').where('photographerId', req.params.id).where('addedByUserId', req.authUserId).select().orderBy('updated_at', 'desc').then(photos => {
+                photos.forEach(photo => {
+                    photo.images = JSON.parse(photo.images)
+                    photo.tags = JSON.parse(photo.tags)
+                    photo.metadata = JSON.parse(photo.metadata)
+                    photo.photographer = photographer
+                    delete photo.photographerId
+                })
+                res.json({ success: true, photos: photos, photographer: photographer })
+            })
+        } else {
+            res.json({ success: false })
+        }
+    })
+})
+
 // GET all photos for authenticated user
-router.get('/user/photo/all', authCheck, (req, res) => {
+router.get('/photo/all/user', authCheck, (req, res) => {
     var authUserId = req.authUserId // for some reason, if you don't call it outside the .then(() => {}) below, req.authUserId will be null
     getAllPhotographers().then(photographers => {
         knex('photos').where('addedByUserId', authUserId).select().orderBy('updated_at', 'desc').then(photos => {
@@ -534,6 +555,22 @@ router.get('/user/photo/all', authCheck, (req, res) => {
 router.get('/tag/:tag', (req, res) => {
     getAllPhotographers().then(photographers => {
         knex('photos').where('tags', 'like', `%${req.params.tag}%`).select().orderBy('updated_at', 'desc').then(photos => {
+            photos.forEach(photo => {
+                photo.images = JSON.parse(photo.images)
+                photo.tags = JSON.parse(photo.tags)
+                photo.metadata = JSON.parse(photo.metadata)
+                photo.photographer = photographers.find(photographer => photographer.id == photo.photographerId)
+                delete photo.photographerId
+            })
+            res.json({ success: true, photos: photos })
+        })
+    })
+})
+
+router.get('/tag/:tag/user', authCheck, (req, res) => {
+    var authUserId = req.authUserId
+    getAllPhotographers().then(photographers => {
+        knex('photos').where('tags', 'like', `%${req.params.tag}%`).where('addedByUserId', authUserId).select().orderBy('updated_at', 'desc').then(photos => {
             photos.forEach(photo => {
                 photo.images = JSON.parse(photo.images)
                 photo.tags = JSON.parse(photo.tags)
