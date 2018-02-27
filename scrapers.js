@@ -1,6 +1,41 @@
-const requestPromise = require('request-promise-native')
+var requestPromise = require('request-promise-native')
+requestPromise = requestPromise.defaults({
+    jar: true, // this enables cookies
+    headers: { // some sites like to block scrapers, ex: deviantart
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36'
+    }
+})
+
 const jsdom = require('jsdom')
 const { JSDOM } = jsdom
+
+const puppeteer = require('puppeteer')
+
+module.exports = {
+    instagram, tumblr, flickr, twitter, deviantart
+}
+
+async function getDOM(url, swallowConsoleErrors = false, returnHtmlString = false) {
+    try {
+        var htmlString = await requestPromise(url)
+    } catch(error) {
+        return { error: error.message }
+    }
+
+    if(swallowConsoleErrors) {
+        const virtualConsole = new jsdom.VirtualConsole()
+        var { document } = (new JSDOM(htmlString, { url, virtualConsole })).window // url is passed so we can access stuff like document.location.origin
+        virtualConsole.on("error", () => {}) // swallow jsdom parsing errors
+    } else {
+        var { document } = (new JSDOM(htmlString, { url })).window
+    }
+
+    if(returnHtmlString) {
+        return { document, htmlString }
+    } else {
+        return document
+    }
+}
 
 async function instagram(url) {
     var document = await getDOM(url)
@@ -74,29 +109,61 @@ async function twitter(url) {
     return Promise.resolve(photo)
 }
 
+async function deviantart(url) {
+    var document = await getDOM(url, true)
 
-async function getDOM(url, swallowConsoleErrors = false, returnHtmlString = false) {
-    try {
-        var htmlString = await requestPromise(url)
-    } catch(error) {
-        return { error: error.message }
+    var photo = {}
+
+    photo['title'] = document.querySelector('.dev-title-container > h1 > a').textContent
+    photo['photographerName'] = document.querySelector('.author').querySelector('a').textContent
+    photo['photographerLink'] = document.querySelector('.author').querySelector('a').href
+    photo['source'] = url
+    photo['images'] = []
+
+    var downloadButton = document.querySelector('.dev-page-download')
+    var fullImageFromPage = document.querySelector('.dev-content-full')
+
+    if(downloadButton) {
+        var response = await requestPromise({ url: downloadButton.href, followRedirect: false, simple: false, resolveWithFullResponse: true })
+        photo['images'].push(response.headers.location)
+    } else if(fullImageFromPage) {
+        photo['images'].push(fullImageFromPage.src)
+    } else { // mature content then
+        const browser = await puppeteer.launch()
+        const page = await browser.newPage()
+
+        await page.goto(url)
+
+        await page.type('#month', '01')
+        await page.type('#day', '01')
+        await page.type('#year', '1990')
+        await page.click('#agree_tos')
+        await page.click('.smbutton-green')
+
+        await page.waitForNavigation()
+
+        var downloadButtonMature = await page.evaluate(() => document.querySelector('.dev-page-download').href)
+        var fullImageFromPageMature = await page.evaluate(() => document.querySelector('.dev-content-full').src)
+
+        var pageCookies = await page.cookies()
+
+        browser.close()
+
+        if(downloadButtonMature) {
+            var response = await requestPromise({
+                url: downloadButtonMature,
+                followRedirect: false,
+                simple: false,
+                resolveWithFullResponse: true,
+                headers:{
+                     Cookie: pageCookies[0].name + '=' + pageCookies[0].value + ';' // pageCookies[0] is userInfo
+                }
+            })
+            photo['images'].push(response.headers.location)
+        } else if(fullImageFromPageMature) {
+            photo['images'].push(fullImageFromPageMature.src)
+        }
     }
 
-    if(swallowConsoleErrors) {
-        const virtualConsole = new jsdom.VirtualConsole()
-        var { document } = (new JSDOM(htmlString, { url, virtualConsole })).window // url is passed so we can access stuff like document.location.origin
-        virtualConsole.on("error", () => {}) // swallow jsdom parsing errors
-    } else {
-        var { document } = (new JSDOM(htmlString, { url })).window
-    }
-
-    if(returnHtmlString) {
-        return { document, htmlString }
-    } else {
-        return document
-    }
-}
-
-module.exports = {
-    instagram, tumblr, flickr, twitter
+    return Promise.resolve(photo)
 }
