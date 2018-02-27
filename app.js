@@ -365,6 +365,7 @@ router.patch('/photo/:id/image/delete', authCheck, (req, res) => {
         if(images.find(image => image == req.body.image)) {
             try {
                 fs.unlinkSync(path.join(uploadsDir, req.body.image))
+                fs.unlinkSync(path.join(thumbnailsDir, req.body.image))
             } catch(err) {} // swallow errors since we don't care
             var imagesNew = JSON.stringify(images.filter(image => image !== req.body.image))
             knex('photos').where('id', req.params.id).update('images', imagesNew).update('updated_at', knex.fn.now()).then(updatedRowsCount => {
@@ -382,6 +383,7 @@ router.delete('/photo/:id', authCheck, (req, res) => {
             photo.images.forEach(image => { // delete all attached images from storage
                 try {
                     fs.unlinkSync(path.join(uploadsDir, image))
+                    fs.unlinkSync(path.join(thumbnailsDir, image))
                 } catch(err) {} // swallow errors since we don't care
             })
             knex('photos').where('id', req.params.id).delete().then(deleteCount => {
@@ -457,6 +459,7 @@ router.delete('/photographer/:id', authCheck, async(req, res) => {
             images.forEach(image => { // delete all attached images from storage
                 try {
                     fs.unlinkSync(path.join(uploadsDir, image))
+                    fs.unlinkSync(path.join(thumbnailsDir, image))
                 } catch(err) {} // swallow errors since we don't care
             })
         })
@@ -642,7 +645,10 @@ router.post('/add-from', authCheck, async(req, res) => {
         for(let image of photo.images) {
             let filename = getFileNameFromURL(image)
             filename = prependDateTimeToString(filename)
-            await downloadImage(image, path.join(uploadsDir, filename))
+            let imageSavePath = path.join(uploadsDir, filename)
+            await downloadImage(image, imageSavePath)
+            let thumbnailSavePath = path.join(thumbnailsDir, filename)
+            generateThumbnail(imageSavePath, thumbnailSavePath)
             images.push(filename)
         }
 
