@@ -43,7 +43,7 @@ async function instagram(url) {
     var photo = {}
 
     var jsonData = document.querySelectorAll('script')[2].textContent
-    jsonData = jsonData.replace('window._sharedData = ', '').replace(';', '')
+    jsonData = /{.*}/.exec(jsonData)[0]
     jsonData = JSON.parse(jsonData)
     var uploaderInfo = jsonData['entry_data']['PostPage'][0]['graphql']['shortcode_media']
     photo['title'] = uploaderInfo['edge_media_to_caption']['edges'][0]['node']['text']
