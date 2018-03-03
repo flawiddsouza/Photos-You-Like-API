@@ -78,7 +78,11 @@ async function flickr(url) {
 
     var photo = {}
 
-    photo['title'] = document.querySelector('.photo-title').textContent.trim()
+    if(document.querySelector('.photo-title')) {
+        photo['title'] = document.querySelector('.photo-title').textContent.trim()
+    } else {
+        photo['title'] = 'Untitled'
+    }
     var photographer = document.querySelector('.owner-name')
     photo['photographerName'] = photographer.textContent
     photo['photographerLink'] = photographer.href
