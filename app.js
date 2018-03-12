@@ -124,7 +124,7 @@ const url = require('url')
 
 function getFileNameFromURL(theURL) {
     var parsed = url.parse(theURL)
-    return path.basename(parsed.pathname)
+    return decodeURIComponent(path.basename(parsed.pathname))
 }
 
 const fs = require('fs')
