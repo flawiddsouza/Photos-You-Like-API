@@ -503,7 +503,6 @@ router.get('/photographer/all/with/count/user', authCheck, async(req, res) => {
             photographer.links = JSON.parse(photographer.links)
             photographer.count = photos.filter(photo => photo.photographerId == photographer.id).length
         })
-        photographers = photographers.filter(photographer => photographer.count > 0)
         res.json(photographers)
     })
 })
