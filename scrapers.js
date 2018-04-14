@@ -146,7 +146,11 @@ async function deviantart(url) {
 
         await page.waitForNavigation()
 
-        var downloadButtonMature = await page.evaluate(() => document.querySelector('.dev-page-download').href)
+        var downloadButtonMature = await page.evaluate(() => {
+            if(document.querySelector('.dev-page-download')) {
+                return document.querySelector('.dev-page-download').href
+            }
+        })
         var fullImageFromPageMature = await page.evaluate(() => document.querySelector('.dev-content-full').src)
 
         var pageCookies = await page.cookies()
@@ -165,7 +169,7 @@ async function deviantart(url) {
             })
             photo['images'].push(response.headers.location)
         } else if(fullImageFromPageMature) {
-            photo['images'].push(fullImageFromPageMature.src)
+            photo['images'].push(fullImageFromPageMature)
         }
     }
 
