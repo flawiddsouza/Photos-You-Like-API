@@ -151,13 +151,19 @@ async function deviantart(url) {
                 return document.querySelector('.dev-page-download').href
             }
         })
-        var fullImageFromPageMature = await page.evaluate(() => document.querySelector('.dev-content-full').src)
+        var fullImageFromPageMature = await page.evaluate(() => {
+            if(document.querySelector('.dev-content-full')) {
+                return document.querySelector('.dev-content-full').src
+            }
+        })
 
         if(downloadButtonMature) {
             await page.goto(downloadButtonMature)
             photo['images'].push(page.url())
         } else if(fullImageFromPageMature) {
             photo['images'].push(fullImageFromPageMature)
+        } else {
+            photo['images'].push('user has limited the viewing of this artwork to members of the DeviantArt community only')
         }
 
         browser.close()
