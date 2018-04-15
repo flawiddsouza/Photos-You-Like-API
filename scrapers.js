@@ -138,30 +138,37 @@ async function deviantart(url) {
 
         await page.goto(url)
 
-        await page.type('#month', '01')
-        await page.type('#day', '01')
-        await page.type('#year', '1990')
-        await page.click('#agree_tos')
-        await page.click('.smbutton-green')
+        var filterWarning = await page.evaluate(() => document.getElementById('filter-warning'))
+        if(!filterWarning) {
 
-        await page.waitForNavigation()
+            await page.type('#month', '01')
+            await page.type('#day', '01')
+            await page.type('#year', '1990')
+            await page.click('#agree_tos')
+            await page.click('.smbutton-green')
 
-        var downloadButtonMature = await page.evaluate(() => {
-            if(document.querySelector('.dev-page-download')) {
-                return document.querySelector('.dev-page-download').href
+            await page.waitForNavigation()
+
+            var downloadButtonMature = await page.evaluate(() => {
+                if(document.querySelector('.dev-page-download')) {
+                    return document.querySelector('.dev-page-download').href
+                }
+            })
+            var fullImageFromPageMature = await page.evaluate(() => {
+                if(document.querySelector('.dev-content-full')) {
+                    return document.querySelector('.dev-content-full').src
+                }
+            })
+
+            if(downloadButtonMature) {
+                await page.goto(downloadButtonMature)
+                photo['images'].push(page.url())
+            } else if(fullImageFromPageMature) {
+                photo['images'].push(fullImageFromPageMature)
+            } else {
+                photo['images'].push('user has limited the viewing of this artwork to members of the DeviantArt community only')
             }
-        })
-        var fullImageFromPageMature = await page.evaluate(() => {
-            if(document.querySelector('.dev-content-full')) {
-                return document.querySelector('.dev-content-full').src
-            }
-        })
 
-        if(downloadButtonMature) {
-            await page.goto(downloadButtonMature)
-            photo['images'].push(page.url())
-        } else if(fullImageFromPageMature) {
-            photo['images'].push(fullImageFromPageMature)
         } else {
             photo['images'].push('user has limited the viewing of this artwork to members of the DeviantArt community only')
         }
