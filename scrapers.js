@@ -153,24 +153,14 @@ async function deviantart(url) {
         })
         var fullImageFromPageMature = await page.evaluate(() => document.querySelector('.dev-content-full').src)
 
-        var pageCookies = await page.cookies()
-
-        browser.close()
-
         if(downloadButtonMature) {
-            var response = await requestPromise({
-                url: downloadButtonMature,
-                followRedirect: false,
-                simple: false,
-                resolveWithFullResponse: true,
-                headers:{
-                     Cookie: pageCookies[0].name + '=' + pageCookies[0].value + ';' // pageCookies[0] is userInfo
-                }
-            })
-            photo['images'].push(response.headers.location)
+            await page.goto(downloadButtonMature)
+            photo['images'].push(page.url())
         } else if(fullImageFromPageMature) {
             photo['images'].push(fullImageFromPageMature)
         }
+
+        browser.close()
     }
 
     return Promise.resolve(photo)
