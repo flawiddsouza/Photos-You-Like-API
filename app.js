@@ -623,6 +623,10 @@ router.post('/add-from', authCheck, async(req, res) => {
         photo = await scrapers.deviantart(req.body.deviantart)
     }
 
+    if(req.body.reddit) {
+        photo = await scrapers.reddit(req.body.reddit)
+    }
+
     if(photo.error) {
         res.json({
             success: false,

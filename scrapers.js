@@ -12,7 +12,7 @@ const { JSDOM } = jsdom
 const puppeteer = require('puppeteer')
 
 module.exports = {
-    instagram, tumblr, flickr, twitter, deviantart
+    instagram, tumblr, flickr, twitter, deviantart, reddit
 }
 
 async function getDOM(url, swallowConsoleErrors = false, returnHtmlString = false) {
@@ -172,6 +172,23 @@ async function deviantart(url) {
             photo['images'].push(fullImageFromPageMature)
         }
     }
+
+    return Promise.resolve(photo)
+}
+
+async function reddit(url) {
+    var document = await getDOM(url, true)
+
+    var photo = {}
+
+    var photoTitle = document.querySelector('.title.outbound')
+    photo['title'] = photoTitle.textContent
+    var photographer = document.querySelector('.tagline').querySelector('a')
+    photo['photographerName'] = photographer.textContent
+    photo['photographerLink'] = photographer.href
+    photo['source'] = url
+    photo['images'] = []
+    photo['images'].push(photoTitle.href)
 
     return Promise.resolve(photo)
 }
