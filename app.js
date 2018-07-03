@@ -661,7 +661,7 @@ router.post('/add-from', authCheck, async(req, res) => {
         }
 
         knex('photos').insert({
-            title: photo.title,
+            title: photo.title.substr(0, 255), // limit title to 255 characters
             photographerId: photographerId,
             images: JSON.stringify(images),
             source: photo.source,
