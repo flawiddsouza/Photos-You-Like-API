@@ -58,10 +58,14 @@ async function instagram(url) {
     photo['photographerLink'] = 'https://www.instagram.com/' + uploader['username'] + '/'
     photo['source'] = url
     photo['images'] = []
-    var images = uploaderInfo['edge_sidecar_to_children']['edges']
-    images.forEach(image => {
-        photo['images'].push(image.node.display_url)
-    })
+    try {
+        var images = uploaderInfo['edge_sidecar_to_children']['edges']
+        images.forEach(image => {
+            photo['images'].push(image.node.display_url)
+        })
+    } catch(e) { // when there's only one image in a post
+        photo['images'].push(document.querySelector('meta[property="og:image"]').getAttribute('content'))
+    }
 
     return Promise.resolve(photo)
 }
