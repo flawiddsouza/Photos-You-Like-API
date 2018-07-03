@@ -42,7 +42,12 @@ async function instagram(url) {
 
     var photo = {}
 
-    var jsonData = document.querySelectorAll('script')[2].textContent
+    var jsonData
+    Array.from(document.querySelectorAll('script')).forEach(script => {
+        if(script.textContent.includes('window._sharedData = ')) {
+            jsonData = script.textContent
+        }
+    })
     jsonData = /{.*}/.exec(jsonData)[0]
     jsonData = JSON.parse(jsonData)
     var uploaderInfo = jsonData['entry_data']['PostPage'][0]['graphql']['shortcode_media']
@@ -53,7 +58,10 @@ async function instagram(url) {
     photo['photographerLink'] = 'https://www.instagram.com/' + uploader['username'] + '/'
     photo['source'] = url
     photo['images'] = []
-    photo['images'].push(document.querySelector('meta[property="og:image"]').getAttribute('content'))
+    var images = uploaderInfo['edge_sidecar_to_children']['edges']
+    images.forEach(image => {
+        photo['images'].push(image.node.display_url)
+    })
 
     return Promise.resolve(photo)
 }
