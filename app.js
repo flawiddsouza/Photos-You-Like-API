@@ -476,7 +476,7 @@ router.delete('/photographer/:id', authCheck, async(req, res) => {
 })
 
 async function getAllPhotographers() {
-    var photographers = await knex('photographers').select()
+    var photographers = await knex('photographers').select().orderBy('updated_at', 'desc')
     photographers.forEach(photographer => photographer.links = JSON.parse(photographer.links))
     return Promise.resolve(photographers)
 }
