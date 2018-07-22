@@ -568,6 +568,27 @@ router.get('/photographer/:id/all/user', authCheck, (req, res) => {
     })
 })
 
+router.get('/photographer/:id/all/others', authCheck, (req, res) => {
+    knex('photographers').where('id', req.params.id).select().then(photographers => {
+        var photographer = photographers[0]
+        if(photographer) {
+            photographer.links = JSON.parse(photographer.links)
+            knex('photos').where('photographerId', req.params.id).whereNot('addedByUserId', req.authUserId).select().orderBy('updated_at', 'desc').then(photos => {
+                photos.forEach(photo => {
+                    photo.images = JSON.parse(photo.images)
+                    photo.tags = JSON.parse(photo.tags)
+                    photo.metadata = JSON.parse(photo.metadata)
+                    photo.photographer = photographer
+                    delete photo.photographerId
+                })
+                res.json({ success: true, photos: photos, photographer: photographer })
+            })
+        } else {
+            res.json({ success: false })
+        }
+    })
+})
+
 // GET all photos for authenticated user
 router.get('/photo/all/user', authCheck, (req, res) => {
     var authUserId = req.authUserId // for some reason, if you don't call it outside the .then(() => {}) below, req.authUserId will be null
