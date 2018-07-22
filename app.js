@@ -240,6 +240,24 @@ router.get('/photo/all', (req, res) => {
     })
 })
 
+// GET all photos that are not from the authenticated user
+router.get('/photo/others', authCheck, (req, res) => {
+    var authUserId = req.authUserId // for some reason, if you don't call it outside the .then(() => {}) below, req.authUserId will be null
+    getAllPhotographers().then(photographers => {
+        knex('photos').whereNot('addedByUserId', authUserId).select().orderBy('updated_at', 'desc').then(photos => {
+            photos.forEach(photo => {
+                photo.images = JSON.parse(photo.images)
+                photo.tags = JSON.parse(photo.tags)
+                photo.metadata = JSON.parse(photo.metadata)
+                photo.photographer = photographers.find(photographer => photographer.id == photo.photographerId)
+                delete photo.photographerId
+            })
+            res.json({ success: true, photos: photos })
+        })
+    })
+})
+
+
 async function getPhotoForId(id) {
     var photos = await knex('photos').where('id', id).select()
     var photo = photos[0]
