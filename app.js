@@ -30,12 +30,14 @@ const jwt = require('jsonwebtoken')
 
 router.post('/auth/google', (req, res) => {
     var data = {}
-    data.code = req.body.code
     if(req.body.redirectUri) {
-        data.client_id = process.env.GOOGLE_CLIENT_ID,
-        data.client_secret = process.env.GOOGLE_CLIENT_SECRET,
+        data.code = 'code=' + req.body.code
+        data.code = decodeURIComponent(data.code.match(/code=(.*?)&/)[1])
+        data.client_id = process.env.GOOGLE_CLIENT_ID
+        data.client_secret = process.env.GOOGLE_CLIENT_SECRET
         data.redirect_uri = req.body.redirectUri
     } else {
+        data.code = req.body.code
         data.client_id = process.env.GOOGLE_CLIENT_ID_OTHER
         data.client_secret = process.env.GOOGLE_CLIENT_SECRET_OTHER
         data.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
