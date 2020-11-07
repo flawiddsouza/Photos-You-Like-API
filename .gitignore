@@ -2,3 +2,5 @@ node_modules
 knexfile.js
 *.sqlite3
 .env
+# user_data directory for pupeeteer
+/user_data

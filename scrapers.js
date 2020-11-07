@@ -1,8 +1,11 @@
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '.env') })
+
 var requestPromise = require('request-promise-native')
 requestPromise = requestPromise.defaults({
     jar: true, // this enables cookies
     headers: { // some sites like to block scrapers, ex: deviantart
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'
     }
 })
 
@@ -50,8 +53,62 @@ async function instagram(url) {
     })
     jsonData = /{.*}/.exec(jsonData)[0]
     jsonData = JSON.parse(jsonData)
-    var uploaderInfo = jsonData['entry_data']['PostPage'][0]['graphql']['shortcode_media']
-    photo['title'] = uploaderInfo['edge_media_to_caption']['edges'][0]['node']['text']
+
+    var uploaderInfo
+
+    if('LoginAndSignupPage' in jsonData.entry_data) {
+        const browser = await puppeteer.launch({
+            userDataDir: './user_data' // for storing session, so that we don't need to login again and again
+        })
+        const page = await browser.newPage()
+
+        await page.goto(url, {
+            waitUntil: 'networkidle0'
+        })
+
+        const pageTitle = await page.title()
+
+        if(pageTitle.includes('Login')) {
+            await page.type('[name="username"]', process.env.INSTAGRAM_USERNAME)
+            await page.type('[name="password"]', process.env.INSTAGRAM_PASSWORD)
+            await Promise.all([
+                page.click('button[type=submit]'),
+                page.waitForNavigation({ waitUntil: 'networkidle2' })
+            ])
+        }
+
+        let bodyHTML = await page.evaluate(() => document.body.innerHTML)
+
+        if(bodyHTML.includes('Save Your Login Info?')) {
+            const button = await page.$('button:first-child') // Not Now button
+            await Promise.all([
+                button.click(),
+                page.waitForNavigation({ waitUntil: 'networkidle2' })
+            ])
+
+            bodyHTML = await page.evaluate(() => document.body.innerHTML)
+        }
+
+        jsonData = await page.evaluate(() => {
+            let returnValue = ''
+            Array.from(document.querySelectorAll('script')).forEach(script => {
+                if(script.textContent.includes('window.__additionalDataLoaded')) {
+                    returnValue = script.textContent
+                }
+            })
+            return returnValue
+        })
+
+        jsonData = /{.*}/.exec(jsonData)[0]
+        jsonData = JSON.parse(jsonData)
+        uploaderInfo = jsonData['graphql']['shortcode_media']
+
+        browser.close()
+    } else {
+        uploaderInfo = jsonData['entry_data']['PostPage'][0]['graphql']['shortcode_media']
+    }
+
+    photo['title'] = uploaderInfo['edge_media_to_caption']['edges'].length > 0 ? uploaderInfo['edge_media_to_caption']['edges'][0]['node']['text'] : 'Untitled'
     photo['title'] = photo['title'].replace(/(\S*#(?:\[[^\]]+\]|\S+))/g, '').trim() // strip all hash tags
     var uploader = uploaderInfo['owner']
     photo['photographerName'] = uploader['full_name']
@@ -64,7 +121,7 @@ async function instagram(url) {
             photo['images'].push(image.node.display_url)
         })
     } catch(e) { // when there's only one image in a post
-        photo['images'].push(document.querySelector('meta[property="og:image"]').getAttribute('content'))
+        photo['images'].push(uploaderInfo.display_url)
     }
 
     return Promise.resolve(photo)
