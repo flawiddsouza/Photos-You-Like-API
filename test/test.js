@@ -22,12 +22,12 @@ describe('scrapers.instagram()', () => {
 describe('scrapers.tumblr()', () => {
     it('should fetch tumblr data as a photo object', async() => {
         var photo1 = {
-            title: 'Exploring Planet Earth : Photo',
+            title: 'Exploring Planet Earth: Photo',
             photographerName: 'Exploring Planet Earth',
             photographerLink: 'https://exploringplanetearth.tumblr.com',
             source: 'https://exploringplanetearth.tumblr.com/image/171158802586',
             images: [
-                'https://68.media.tumblr.com/0ba9812a3c207264f0c2ec98fd02ed36/tumblr_p4ixrcJujK1vike5ho1_1280.jpg'
+                'https://64.media.tumblr.com/0ba9812a3c207264f0c2ec98fd02ed36/tumblr_p4ixrcJujK1vike5ho1_1280.jpg'
             ]
         }
 
@@ -40,12 +40,12 @@ describe('scrapers.tumblr()', () => {
 describe('scrapers.flickr()', () => {
     it('should fetch flickr data as a photo object', async() => {
         var photo1 = {
-            title: 'Siskin',
+            title: 'Siskin (Explored 23-02-18)',
             photographerName: 'Ian Redman',
             photographerLink: 'https://www.flickr.com/photos/redmani49/',
             source: 'https://www.flickr.com/photos/redmani49/40397401792/in/explore-2018-02-23/',
             images: [
-                'https://farm5.staticflickr.com/4613/40397401792_66d357434a_o.jpg'
+                'https://live.staticflickr.com/4613/40397401792_66d357434a_o.jpg'
             ]
         }
 
